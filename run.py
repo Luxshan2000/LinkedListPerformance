@@ -2,63 +2,113 @@ import subprocess
 import statistics
 import math
 
-NO_OF_SAMPLES = 100     # Number of samples used
+NO_OF_SAMPLES = 100  # Number of samples used
 
-# Compiling the source codes in C
-def compileAll():
-    subprocess.call(['gcc', '-g', '-Wall', '-o', 'linkedlistSerial', 'linkedlistSerial.c'])
-    subprocess.call(['gcc', '-g', '-Wall', '-o', 'linkedlistMutex', 'linkedlistMutex.c', '-lm', '-lpthread'])
-    subprocess.call(['gcc', '-g', '-Wall', '-o', 'linkedlistRWlock', 'linkedlistRWlock.c', '-lm', '-lpthread'])
+# Function to compile source codes with error handling
+def compile_all():
+    sources = [
+        ('linkedlistSerial.c', 'linkedlistSerial'),
+        ('linkedlistMutex.c', 'linkedlistMutex'),
+        ('linkedlistRWlock.c', 'linkedlistRWlock')
+    ]
 
-# Execution of given process and calculation of average and standard deviation
+    for source, output in sources:
+        try:
+            subprocess.check_call(['gcc', '-g', '-Wall', '-o', output, source, '-lm', '-lpthread'])
+            print(f"Compiled {source} successfully.")
+        except subprocess.CalledProcessError:
+            print(f"Error compiling {source}. Please check the source code.")
+
+# Function to execute a given command, calculate statistics, and return results
 def execute(command):
     elapsed_times = []
+    
     for i in range(NO_OF_SAMPLES):
-        time = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
-        elapsed_times.append(float(time))
-
-    print('Average: ' + str(statistics.mean(elapsed_times)))
-    print('Standard Deviation: ' + str(statistics.stdev(elapsed_times)))
-
+        try:
+            # Capture the execution time from the subprocess
+            time = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
+            elapsed_times.append(float(time))
+        except Exception as e:
+            print(f"Error executing command {command}: {e}")
+            return None
+    
+    # Calculate statistics
     avg = statistics.mean(elapsed_times)
-    standardDeviation = statistics.stdev(elapsed_times)
-    samples = math.ceil(math.pow(((100 * 1.96 * standardDeviation) / (5 * avg)), 2))
+    std_dev = statistics.stdev(elapsed_times)
+    required_samples = math.ceil(math.pow(((100 * 1.96 * std_dev) / (5 * avg)), 2))
 
-    print('Samples: ' + str(samples))
+    print(f"Average: {avg:.4f}")
+    print(f"Standard Deviation: {std_dev:.4f}")
+    print(f"Required Samples: {required_samples}")
+    
+    return avg, std_dev, required_samples
 
-# Execution of a list of commands
-def executeCommands(cmds):
-    for i in range(len(cmds)):
-        print("Number of Threads: " + str(2**i))
-        execute(cmds[i])
-        print("")
+# Function to execute a list of commands
+def execute_commands(commands, label):
+    for i, command in enumerate(commands):
+        print(f"{label} - Number of Threads: {2 ** i}")
+        execute(command)
+        print("")  # Print new line for readability
 
-# Commands to be executed
-serial = [['./linkedlistSerial', '1000', '10000', '0.99', '0.005', '0.005'], ['./linkedlistSerial', '1000', '10000', '0.9', '0.05', '0.05'], ['./linkedlistSerial', '1000', '10000', '0.5', '0.25', '0.25']]
-mutex_1 = [['./linkedlistMutex', '1000', '10000', '0.99', '0.005', '0.005', '1'], ['./linkedlistMutex', '1000', '10000', '0.99', '0.005', '0.005', '2'], ['./linkedlistMutex', '1000', '10000', '0.99', '0.005', '0.005', '4'], ['./linkedlistMutex', '1000', '10000', '0.99', '0.005', '0.005', '8']]
-mutex_2 = [['./linkedlistMutex', '1000', '10000', '0.9', '0.05', '0.05', '1'], ['./linkedlistMutex', '1000', '10000', '0.9', '0.05', '0.05', '2'], ['./linkedlistMutex', '1000', '10000', '0.9', '0.05', '0.05', '4'], ['./linkedlistMutex', '1000', '10000', '0.9', '0.05', '0.05', '8']]
-mutex_3 = [['./linkedlistMutex', '1000', '10000', '0.5', '0.25', '0.25', '1'], ['./linkedlistMutex', '1000', '10000', '0.5', '0.25', '0.25', '2'], ['./linkedlistMutex', '1000', '10000', '0.5', '0.25', '0.25', '4'], ['./linkedlistMutex', '1000', '10000', '0.5', '0.25', '0.25', '8']]
-rw_1 = [['./linkedlistRWlock', '1000', '10000', '0.99', '0.005', '0.005', '1'], ['./linkedlistRWlock', '1000', '10000', '0.99', '0.005', '0.005', '2'], ['./linkedlistRWlock', '1000', '10000', '0.99', '0.005', '0.005', '4'], ['./linkedlistRWlock', '1000', '10000', '0.99', '0.005', '0.005', '8']]
-rw_2 = [['./linkedlistRWlock', '1000', '10000', '0.9', '0.05', '0.05', '1'], ['./linkedlistRWlock', '1000', '10000', '0.9', '0.05', '0.05', '2'], ['./linkedlistRWlock', '1000', '10000', '0.9', '0.05', '0.05', '4'], ['./linkedlistRWlock', '1000', '10000', '0.9', '0.05', '0.05', '8']]
-rw_3 = [['./linkedlistRWlock', '1000', '10000', '0.5', '0.25', '0.25', '1'], ['./linkedlistRWlock', '1000', '10000', '0.5', '0.25', '0.25', '2'], ['./linkedlistRWlock', '1000', '10000', '0.5', '0.25', '0.25', '4'], ['./linkedlistRWlock', '1000', '10000', '0.5', '0.25', '0.25', '8']]
+# Main function to handle execution flow
+def main():
+    # Compile the C source files
+    compile_all()
 
-mutex = [mutex_1, mutex_2, mutex_3]
-rw = [rw_1, rw_2, rw_3]
+    # Commands to be executed
+    serial_commands = [
+        ['./linkedlistSerial', '1000', '10000', '0.99', '0.005', '0.005'],
+        ['./linkedlistSerial', '1000', '10000', '0.9', '0.05', '0.05'],
+        ['./linkedlistSerial', '1000', '10000', '0.5', '0.25', '0.25']
+    ]
 
-# Compile all the files
-compileAll()
+    mutex_commands = [
+        [
+            ['./linkedlistMutex', '1000', '10000', '0.99', '0.005', '0.005', str(threads)]
+            for threads in [1, 2, 4, 8]
+        ],
+        [
+            ['./linkedlistMutex', '1000', '10000', '0.9', '0.05', '0.05', str(threads)]
+            for threads in [1, 2, 4, 8]
+        ],
+        [
+            ['./linkedlistMutex', '1000', '10000', '0.5', '0.25', '0.25', str(threads)]
+            for threads in [1, 2, 4, 8]
+        ]
+    ]
 
-# Execute and print the output
-for i in range(1,4):
-    print('=============== CASE: ' + str(i) + ' ===============')
-    print('Serial linked list ')
-    print('=======')
-    execute(serial[i-1])
-    print('')
-    print('Mutex linked list ')
-    print('=======')
-    executeCommands(mutex[i-1])
-    print('')
-    print('ReadWrite linked list')
-    print('=======')
-    executeCommands(rw[i-1])
+    rw_commands = [
+        [
+            ['./linkedlistRWlock', '1000', '10000', '0.99', '0.005', '0.005', str(threads)]
+            for threads in [1, 2, 4, 8]
+        ],
+        [
+            ['./linkedlistRWlock', '1000', '10000', '0.9', '0.05', '0.05', str(threads)]
+            for threads in [1, 2, 4, 8]
+        ],
+        [
+            ['./linkedlistRWlock', '1000', '10000', '0.5', '0.25', '0.25', str(threads)]
+            for threads in [1, 2, 4, 8]
+        ]
+    ]
+
+    # Run experiments
+    for case_idx in range(1, 4):
+        print(f"=============== CASE {case_idx} ===============")
+        print("Serial Linked List")
+        print("=======")
+        execute(serial_commands[case_idx - 1])
+        print()
+
+        print("Mutex Linked List")
+        print("=======")
+        execute_commands(mutex_commands[case_idx - 1], "Mutex")
+        print()
+
+        print("ReadWrite Linked List")
+        print("=======")
+        execute_commands(rw_commands[case_idx - 1], "RWLock")
+        print()
+
+if __name__ == '__main__':
+    main()

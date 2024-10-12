@@ -3,229 +3,145 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-// Maximum value of random numbers
-#define MAX_VALUE 65535  // 2^16 - 1 = 65535
+// Maximum random value
+#define MAX_RANDOM_VALUE 65535
 
 // Struct for linked list node
-struct ListNode {
-    int data;
-    struct ListNode *next;
+struct Node {
+    int value;
+    struct Node *next;
 };
 
-// Variables
-struct ListNode *head_p = NULL;
-int no_Of_Operations;
-int no_Of_Insert_Per_Thread;
-int no_Of_Member_Per_Thread;
-int no_Of_Delete_Per_Thread;
+// Global variables
+struct Node *list_head = NULL;
+int total_operations;
+int insert_operations;
+int member_operations;
+int delete_operations;
 
-// declarations of method
-int Insert(int value);
-int Member(int value);
-int Delete(int value);
-void do_Operations(int *pInt);
-void initialize(int);
-void initialize_Operation(int *no);
-void swap(int *a, int *b);
-void randomize(int *no, int n);
-long get_Current_Time(void);
-int generate_Random(void);
-void Free_list();
+// Function declarations
+int insert_value(int val);
+int check_member(int val);
+int delete_value(int val);
+void perform_operations(int *op_arr);
+void initialize_list(int num_values);
+void initialize_operations(int *op_arr);
+void swap_values(int *x, int *y);
+void shuffle_array(int *arr, int size);
+long get_current_time_ms(void);
+int generate_random_value(void);
+void free_linked_list();
 
-int main(int arc, char *argv[]) {
-    long start, finish, elapsed;
+int main(int argc, char *argv[]) {
+    long start_time, end_time, elapsed_time;
 
-    // Collect and interpret the arguments
-    int no_Of_Variables = atoi(argv[1]);
-    no_Of_Operations = atoi(argv[2]);
-    no_Of_Member_Per_Thread = strtod(argv[3], NULL) * no_Of_Operations;
-    no_Of_Insert_Per_Thread = strtod(argv[4], NULL) * no_Of_Operations;
-    no_Of_Delete_Per_Thread = strtod(argv[5], NULL) * no_Of_Operations;
+    // Parse command line arguments
+    int num_values = atoi(argv[1]);
+    total_operations = atoi(argv[2]);
+    member_operations = strtod(argv[3], NULL) * total_operations;
+    insert_operations = strtod(argv[4], NULL) * total_operations;
+    delete_operations = strtod(argv[5], NULL) * total_operations;
 
     // Initialize the linked list
-    initialize(no_Of_Variables);
+    initialize_list(num_values);
 
-    //Initialize the random operations
-    int operations[no_Of_Operations];
-    initialize_Operation(operations);
+    // Initialize operations array
+    int operations[total_operations];
+    initialize_operations(operations);
 
-    // Get the starting time
-    start = get_Current_Time();
+    // Start timing
+    start_time = get_current_time_ms();
 
-    // Do the operations
-    do_Operations(operations);
+    // Perform operations
+    perform_operations(operations);
 
-    // Get the ending time
-    finish = get_Current_Time();
+    // End timing
+    end_time = get_current_time_ms();
 
-    // Calculate the elapsed time
-    elapsed = finish - start;
+    // Calculate elapsed time
+    elapsed_time = end_time - start_time;
 
-    // free(operations);
-    Free_list();
+    // Free resources
+    free_linked_list();
 
-    // Print the time to stdout
-    printf("%ld\n", elapsed);
+    // Output elapsed time
+    printf("%ld\n", elapsed_time);
+
     return 0;
 }
 
-/*
-* Generate the current time in milliseconds.
-*/
-long get_Current_Time() {
-    struct timeval te;
-    gettimeofday(&te, NULL);
-    long milliseconds = te.tv_sec * 1000LL + te.tv_usec / 1000;
-    return milliseconds;
+/* Get current time in milliseconds */
+long get_current_time_ms() {
+    struct timeval time_val;
+    gettimeofday(&time_val, NULL);
+    long millisecs = time_val.tv_sec * 1000LL + time_val.tv_usec / 1000;
+    return millisecs;
 }
 
-/*
-* Generate random number within the range.
-*/
-int generate_Random() {
-    int value = rand() % MAX_VALUE;
-    return value;
+/* Generate random number */
+int generate_random_value() {
+    return rand() % MAX_RANDOM_VALUE;
 }
 
-/*
-* Initialize the array using random numbers.
-*/
-void initialize(int noOfVariables) {
+/* Initialize linked list with random values */
+void initialize_list(int num_values) {
     srand(time(NULL));
-    int Inserted = 0;
-    int i;
-    for (i = 0; i < noOfVariables; i++) {
-        Inserted = Insert(generate_Random());
-        if (!Inserted) {
-            i--;
+    for (int i = 0; i < num_values; i++) {
+        if (!insert_value(generate_random_value())) {
+            i--; // Retry if insertion fails
         }
     }
 }
 
-void initialize_Operation(int *no) {
-    int i;
-    for (i = 0; i < no_Of_Operations; i++) {
-        if (i < no_Of_Insert_Per_Thread) {
-            *(no + i) = 1;
-        } else if (i < no_Of_Insert_Per_Thread + no_Of_Delete_Per_Thread) {
-            *(no + i) = -1;
+/* Initialize operations array */
+void initialize_operations(int *op_arr) {
+    for (int i = 0; i < total_operations; i++) {
+        if (i < insert_operations) {
+            op_arr[i] = 1;
+        } else if (i < insert_operations + delete_operations) {
+            op_arr[i] = -1;
         } else {
-            *(no + i) = 0;
+            op_arr[i] = 0;
         }
     }
-    randomize(no, no_Of_Operations);
+    shuffle_array(op_arr, total_operations);
 }
 
-/*
- *  A utility function to swap to integers
- */
-void swap(int *a, int *b) {
-    int temp = *a;
-    *a = *b;
-    *b = temp;
+/* Swap two integers */
+void swap_values(int *x, int *y) {
+    int temp = *x;
+    *x = *y;
+    *y = temp;
 }
 
-/*
- * A function to generate a random permutation of arr[]
- */
-void randomize(int *no, int n) {
-    // Use a different seed value so that we don't get same
-    // result each time we run this program
+/* Shuffle the array using random permutation */
+void shuffle_array(int *arr, int size) {
     srand(time(NULL));
-
-    // Start from the last element and swap one by one. We don't
-    // need to run for the first element that's why i > 0
-    for (int i = n - 1; i > 0; i--) {
-        // Pick a random index from 0 to i
+    for (int i = size - 1; i > 0; i--) {
         int j = rand() % (i + 1);
-        swap((no+i), (no+j));
+        swap_values(&arr[i], &arr[j]);
     }
 }
 
-/*
-* Insert a number to linked list.
-*/
-int Insert(int value) {
-    struct ListNode *curr_p = head_p;
-    struct ListNode *pred_p = NULL;
-    struct ListNode *temp_p;
+/* Insert a value into the linked list */
+int insert_value(int val) {
+    struct Node *curr = list_head;
+    struct Node *prev = NULL;
+    struct Node *new_node;
 
-    while (curr_p != NULL && curr_p->data < value) {
-        pred_p = curr_p;
-        curr_p = curr_p->next;
+    while (curr != NULL && curr->value < val) {
+        prev = curr;
+        curr = curr->next;
     }
 
-    if (curr_p == NULL || curr_p->data > value) {
-        temp_p = malloc(sizeof(struct ListNode));
-        temp_p->data = value;
-        temp_p->next = curr_p;
-        if (pred_p == NULL)
-            head_p = temp_p;
-        else
-            pred_p->next = temp_p;
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
-
-/*
-* Check whether the number is available.
-*/
-int Member(int value) {
-    struct ListNode *curr_p;
-
-    curr_p = head_p;
-    while (curr_p != NULL && curr_p->data < value)
-        curr_p = curr_p->next;
-
-    if (curr_p == NULL || curr_p->data > value) {
-        return 0;
-    } else {
-        return 1;
-    }
-}
-
-/*
-* Do operations.
-*/
-void do_Operations(int *operation) {
-    long i;
-    for (i = 0; i < no_Of_Operations; i++) {
-        if (*(operation + i) == 1) {
-            int value = generate_Random();
-            Insert(value);
-        } else if (*(operation + i) == -1) {
-            int value = generate_Random();
-            Delete(value);
+    if (curr == NULL || curr->value > val) {
+        new_node = malloc(sizeof(struct Node));
+        new_node->value = val;
+        new_node->next = curr;
+        if (prev == NULL) {
+            list_head = new_node;
         } else {
-            int value = generate_Random();
-            Member(value);
-        }
-    }
-}
-
-/*
-* Delete the given number from the linked list.
-*/
-int Delete(int value) {
-    struct ListNode *curr_p = head_p;
-    struct ListNode *pred_p = NULL;
-
-    /* Find value */
-    while (curr_p != NULL && curr_p->data < value) {
-        pred_p = curr_p;
-        curr_p = curr_p->next;
-    }
-
-    if (curr_p != NULL && curr_p->data == value) {
-        if (pred_p == NULL) {
-            head_p = curr_p->next;
-            free(curr_p);
-        } else {
-            pred_p->next = curr_p->next;
-            free(curr_p);
+            prev->next = new_node;
         }
         return 1;
     } else {
@@ -233,15 +149,62 @@ int Delete(int value) {
     }
 }
 
-void Free_list() {
-    struct ListNode* succ_p;
-    struct ListNode *curr_p;
+/* Check if a value exists in the list */
+int check_member(int val) {
+    struct Node *curr = list_head;
 
-    if (head_p == NULL) return;
-    curr_p = head_p;
-    while (curr_p != NULL) {
-        succ_p = curr_p->next;
-        free(curr_p);
-        curr_p = succ_p;
+    while (curr != NULL && curr->value < val) {
+        curr = curr->next;
+    }
+
+    return (curr != NULL && curr->value == val);
+}
+
+/* Perform insert, delete, or member operations */
+void perform_operations(int *op_arr) {
+    for (long i = 0; i < total_operations; i++) {
+        int val = generate_random_value();
+        if (op_arr[i] == 1) {
+            insert_value(val);
+        } else if (op_arr[i] == -1) {
+            delete_value(val);
+        } else {
+            check_member(val);
+        }
+    }
+}
+
+/* Delete a value from the linked list */
+int delete_value(int val) {
+    struct Node *curr = list_head;
+    struct Node *prev = NULL;
+
+    while (curr != NULL && curr->value < val) {
+        prev = curr;
+        curr = curr->next;
+    }
+
+    if (curr != NULL && curr->value == val) {
+        if (prev == NULL) {
+            list_head = curr->next;
+        } else {
+            prev->next = curr->next;
+        }
+        free(curr);
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/* Free the linked list */
+void free_linked_list() {
+    struct Node *curr = list_head;
+    struct Node *next_node;
+
+    while (curr != NULL) {
+        next_node = curr->next;
+        free(curr);
+        curr = next_node;
     }
 }
