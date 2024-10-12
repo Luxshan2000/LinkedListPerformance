@@ -49,6 +49,7 @@ data = {
     },
 }
 
+
 # Function to save plot as PNG
 def save_plot(case_name, case_data, filename):
     plt.figure(figsize=(10, 6))
@@ -75,10 +76,10 @@ def save_plot(case_name, case_data, filename):
     plt.grid(True)
 
     # Save the plot
-    plt.savefig(f'plots/{filename}.png')
+    plt.savefig(f"plots/{filename}.png")
     plt.close()
+
 
 # Save plots for each case
 for case, case_data in data.items():
     save_plot(case, case_data, case.replace(" ", "_"))
-
