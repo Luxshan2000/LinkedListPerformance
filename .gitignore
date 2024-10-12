@@ -1,0 +1,41 @@
+# Compiled object files
+*.o
+
+# Compiled binary files
+*.out
+*.exe
+*.a
+*.so
+*.dll
+
+# Backup files
+*~ 
+*.bak
+
+# Temporary files
+*.tmp
+*.temp
+
+# Debugging symbols
+*.dSYM/
+
+# Directory for build artifacts
+build/
+bin/
+obj/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Miscellaneous
+*.class
+*.pyc
